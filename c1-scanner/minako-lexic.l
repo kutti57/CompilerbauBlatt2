@@ -2,83 +2,61 @@
 
 %{
 #include "minako.h"
-#include <stdio.h>
-#include <stdlib.h>
+
+extern int fileno(FILE *stream);
+
+void invalid_token() {
+  fprintf(stderr, "Invalid Token: \"%s\"\n", yytext);
+  exit(EXIT_FAILURE);
+}
 %}
 
-%s st
+%s STRING
+
+BLOCK_COMMENT         "/*"((("*"[^/])?)|[^*])*"*/"
+LINE_COMMENT          "//".*
+INT                   [0-9]+
+FLOAT                 [0-9]+"."[0-9]+|"."[0-9]+([eE]([-+])?[0-9]+)?|[0-9]+[eE]([-+])?[0-9]+
+ID                    [[:alpha:]]+[[:alnum:]]*
+PUNCTUATION           "+"|"-"|"*"|"/"|"="|"("|")"|"{"|"}"|","|";"
+WHITESPACE            [ \t\n\r]
+
 %%
 
-			/* comment in C multi line */
-"/*"((("*"[^/])?)|[^*])*"*/" 
+{BLOCK_COMMENT}
+{LINE_COMMENT}
 
-			/* comment in C++ single line */
-"//".*					
+bool                  return KW_BOOLEAN;
+do                    return KW_DO;
+else                  return KW_ELSE;
+float                 return KW_FLOAT;
+for                   return KW_FOR;
+if                    return KW_IF;
+int                   return KW_INT;
+printf                return KW_PRINTF;
+return                return KW_RETURN;
+void                  return KW_VOID;
+while                 return KW_WHILE;
+"&&"                  return AND;
+"||"                  return OR;
+"=="                  return EQ;
+"!="                  return NEQ;
+">="                  return GEQ;
+"<="                  return LEQ; 
+">"                   return GRT;
+"<"                   return LSS;
 
+{INT}                 yylval.intValue = atoi(yytext); return CONST_INT;
+{FLOAT}               yylval.floatValue = atof(yytext); return CONST_FLOAT;
+true                  yylval.intValue = 1; return CONST_BOOLEAN;
+false                 yylval.intValue = 0; return CONST_BOOLEAN;
+\"                    BEGIN(STRING);
+<STRING>[^\n\"]*/\"   yylval.string = yytext; BEGIN(INITIAL); return CONST_STRING;
+{ID}                  yylval.string = yytext; return ID;
 
+{PUNCTUATION}         return (int)(*yytext);
+{WHITESPACE}
+.                     invalid_token();
+<<EOF>>               return EOF;
 
-		/*	reserved keywords */
-bool                return KW_BOOLEAN;
-do                  return KW_DO;
-else                return KW_ELSE;
-float               return KW_FLOAT;
-for                 return KW_FOR;
-if                  return KW_IF;
-int                 return KW_INT;
-printf              return KW_PRINTF;
-return              return KW_RETURN;
-void                return KW_VOID;
-while               return KW_WHILE;
-
-			/* logical */						
-&&						return AND;
-\|\|					return OR;
-
-			/* relational */						
-==						return EQ;
-!=						return NEQ;
-\>=						return GEQ;
-\<=						return LEQ; 
-\> 						return GRT;
-\< 						return LSS;
-
-             /* variales */
-
-[0-9]+              												 	{ yylval.intValue = atoi(yytext); return CONST_INT;}
-[0-9]+"."[0-9]+|"."[0-9]+([eE]([-+])?[0-9]+)?|[0-9]+[eE]([-+])?[0-9]+   { yylval.floatValue = atof(yytext); return CONST_FLOAT;}
-true																	{ yylval.intValue = 1; return CONST_BOOLEAN;}
-false 																	{ yylval.intValue = 0; return CONST_BOOLEAN;}
-\"																		{BEGIN(st);}
-<st>[^\n\"]*/\"  														{ yylval.string = yytext; BEGIN(INITIAL);return CONST_STRING;}
-([a-zA-Z])+([0-9]|[a-zA-Z])*     										{ yylval.string = yytext; return ID;}
-
-
-			/* arithmetic */
-\+						return 43;
-- 						return 45;
-\* 						return 42;
-\/ 						return 47;
-=                       return 61;
-					
-
-			/* punctuators */
-\(						return 40;
-\)						return 41;
-\{						return 123;
-\}						return 125;
-,						return 44;
-;						return 59;
-
-
-		/* skip new lines and blank spaces*/
-[ \t\n]	
-		/* skip carriage return*/
-\r
-	
-	/* everything not defined before considered an error and will end the program*/
-.		 {fprintf(stderr, "Nicht valides Zeichen.\n"); exit(EXIT_FAILURE);}
-				
-
-		/* end of file reached*/
-<<EOF>>					return EOF;
 %%
